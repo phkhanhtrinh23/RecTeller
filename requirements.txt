@@ -1,0 +1,12 @@
+torch>=2.4
+transformers>=4.51
+sentence-transformers>=3.0
+accelerate
+numpy
+pandas
+scikit-learn
+huggingface_hub
+openai
+tiktoken
+pytest
+matplotlib
