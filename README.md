@@ -1,6 +1,6 @@
 # RecTeller
 
-Official implementation of **RecTeller: Secure and Budgeted Recommendation Access for Personal Agents**.
+Official implementation of **RecTeller: Connecting Personal Agents and Recommender Systems through Secure Gatekeepers and Latent Communication**.
 
 RecTeller lets a platform serve users' personal AI agents from its recommender while keeping load and
 leakage under its own control.
