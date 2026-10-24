@@ -1,9 +1,9 @@
 """Per-account counters p_u <= P, b_u <= B, n_u <= n_max per reservation window (Sec. 4.1,
 Alg. 1, App. D "Counters").
 
-``Reserve(x, X)`` atomically increments x if x < X (one lock = linearisable compare-and-swap,
-H5). Counters are keyed by the *account* (default) or, for the ablation "- cap" and the
-JSON top-K control, by the *session*. An optional sliding 30-day cap N_30 is reserved in the
+``Reserve(x, X)`` atomically increments x if x < X (one lock = linearizable compare-and-swap,
+H5). Counters are keyed by the *account* (default) or, for the ablation "- cap", by the
+*session*. An optional sliding 30-day cap N_30 is reserved in the
 same atomic step as n_u (App. "Per-account accounting", remark).
 """
 from __future__ import annotations

@@ -1,19 +1,19 @@
 """RQ1 / RQ3 / RQ4 utility runs: HR@1 and client input tokens per access mode.
 
     python scripts/run_utility.py --dataset games --client qwen --modes block web mcp ... --seeds 3
-    python scripts/run_utility.py --dataset games --client gpt --modes block mcp jtopk ours_text --n 500
+    python scripts/run_utility.py --dataset games --client gpt --modes block mcp gro ours_text
 """
 import argparse
 import json
 
 import _path  # noqa: F401
 from recteller import config as C, evaluate, projector, setup
-from recteller.intents import Personalise, Search
+from recteller.intents import Personalize, Search
 
 
 def firewall_converter(ctx, tasks, llm, path):
     """Firewall's LLM converter maps the client's two requests onto the closed protocol. The
-    deterministic verifier accepts only grammar-valid SEARCH then PERSONALISE calls."""
+    deterministic verifier accepts only grammar-valid SEARCH then PERSONALIZE calls."""
     if path.exists():
         ok = json.load(open(path))
         if len(ok) >= len(tasks):
@@ -23,7 +23,7 @@ def firewall_converter(ctx, tasks, llm, path):
     a = p.parse_many([f"Search among items {list(t.cands)} for: {t.need}" for t in tasks])
     b = p.parse_many(["Rank the search results for me using my history." for _ in tasks],
                      me=["me"] * len(tasks))
-    ok = [isinstance(x, Search) and isinstance(y, Personalise) for x, y in zip(a, b)]
+    ok = [isinstance(x, Search) and isinstance(y, Personalize) for x, y in zip(a, b)]
     json.dump(ok, open(path, "w"))
     return ok
 

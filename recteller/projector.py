@@ -57,18 +57,20 @@ def load(path, device="cuda") -> Projector:
 
 # ------------------------------------------------------------------ simulator (fixed a priori)
 # Simulator configuration, fixed before any evaluation run.
-SIM = {"scale": 10.0, "sigma": 2.0, "eps_resp": 4.0, "anchor": "target"}
+SIM = {"scale": 10.0, "sigma": 2.0, "eps_resp": 4.0, "anchor": C.PROJ_ANCHOR}
 
 
 def simulate_release(pe: PublicEmbeddings, task, need_vec: np.ndarray, proto, rng):
     """Proxy scores (public only) -> deployed release. Returns (Release, public order).
 
-    The proxy recommender scores candidates by public encoder similarity to the synthetic target
-    item (a public catalogue item) plus Gaussian noise. The public fill is ordered by similarity
-    to the need text."""
+    Proxy scores are the public encoder similarity between the need text and each candidate
+    plus Gaussian noise (App. D). With anchor "target", the similarity to the synthetic target
+    item (a public catalog item) is used instead. The public fill is ordered by similarity to
+    the need text."""
     cands = task.cands
-    public_order = [cands[j] for j in np.argsort(-(pe.item[cands] @ need_vec), kind="stable")]
-    sim = pe.item[cands] @ pe.item[task.target]
+    need_sim = pe.item[cands] @ need_vec
+    public_order = [cands[j] for j in np.argsort(-need_sim, kind="stable")]
+    sim = pe.item[cands] @ pe.item[task.target] if SIM["anchor"] == "target" else need_sim
     s = SIM["scale"] * sim + rng.normal(0, SIM["sigma"], size=len(cands))
     s = s - s.mean()
     rel = release(s, cands, public_order, proto.with_eps(SIM["eps_resp"]), rng, kind="noisy")

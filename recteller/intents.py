@@ -42,16 +42,16 @@ class Details:
 
 
 @dataclass(frozen=True)
-class Personalise:
+class Personalize:
     scope: tuple = ()            # account names whose histories to use
     session: tuple = ()          # client-supplied session items
-    name: str = "PERSONALISE"
+    name: str = "PERSONALIZE"
 
     def key(self):
-        return ("PERSONALISE", self.scope, self.session)
+        return ("PERSONALIZE", self.scope, self.session)
 
 
-Intent = Search | Compare | Details | Personalise
+Intent = Search | Compare | Details | Personalize
 
 SCHEMA = {
     "oneOf": [
@@ -59,7 +59,7 @@ SCHEMA = {
          "items": ["item id"]},
         {"intent": "COMPARE", "items": ["item id"]},
         {"intent": "DETAILS", "item": "item id", "attributes": ["attribute"]},
-        {"intent": "PERSONALISE", "scope": ["account name"], "session": ["item id"]},
+        {"intent": "PERSONALIZE", "scope": ["account name"], "session": ["item id"]},
     ]
 }
 
@@ -85,7 +85,7 @@ def from_json(obj, n_items: int) -> Intent | None:
             return None
         kind = obj.get("intent")
         allowed = {"SEARCH": {"intent", "constraints", "text", "items"}, "COMPARE": {"intent", "items"},
-                   "DETAILS": {"intent", "item", "attributes"}, "PERSONALISE": {"intent", "scope", "session"}}
+                   "DETAILS": {"intent", "item", "attributes"}, "PERSONALIZE": {"intent", "scope", "session"}}
         if kind not in allowed or set(obj) - allowed[kind]:
             return None
         if kind == "SEARCH":
@@ -100,11 +100,11 @@ def from_json(obj, n_items: int) -> Intent | None:
             return Compare(_ints(obj.get("items", []), n_items, 50))
         if kind == "DETAILS":
             return Details(int(_ints([obj["item"]], n_items)[0]), tuple(str(a)[:40] for a in obj.get("attributes", [])))
-        if kind == "PERSONALISE":
+        if kind == "PERSONALIZE":
             scope = obj.get("scope", [])
             if not isinstance(scope, list):
                 return None
-            return Personalise(tuple(str(s)[:40] for s in scope), _ints(obj.get("session", []), n_items, 200))
+            return Personalize(tuple(str(s)[:40] for s in scope), _ints(obj.get("session", []), n_items, 200))
     except (ValueError, TypeError, KeyError, json.JSONDecodeError):
         return None
     return None

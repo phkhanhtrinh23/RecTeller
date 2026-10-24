@@ -20,7 +20,7 @@ GRAMMAR = """Output exactly one JSON object and nothing else, using one of these
 {"intent": "SEARCH", "constraints": [[attribute, "=" | "<=" | ">=", value], ...], "text": free-text need, "items": [item ids]}
 {"intent": "COMPARE", "items": [item ids]}
 {"intent": "DETAILS", "item": item id, "attributes": [attribute, ...]}
-{"intent": "PERSONALISE", "scope": [account names whose history to use], "session": [item ids]}
+{"intent": "PERSONALIZE", "scope": [account names whose history to use], "session": [item ids]}
 Item ids are integers. "items" in SEARCH optionally restricts the search to listed ids. Use "scope": ["me"] for the requesting user's own history."""
 
 SYSTEM = ("You convert a request from a shopping agent into one typed intent for a recommender platform. "
@@ -30,7 +30,7 @@ EXAMPLES = [
     ("Find co-op racing games for Switch under $40.",
      {"intent": "SEARCH", "constraints": [["platform", "=", "Switch"], ["category", "=", "racing"], ["price", "<=", "40"]],
       "text": "co-op racing game for Switch under $40", "items": []}),
-    ("Rank the search results for me and my friend Ben.", {"intent": "PERSONALISE", "scope": ["me", "Ben"], "session": []}),
+    ("Rank the search results for me and my friend Ben.", {"intent": "PERSONALIZE", "scope": ["me", "Ben"], "session": []}),
     ("Compare items 12 and 40.", {"intent": "COMPARE", "items": [12, 40]}),
 ]
 
@@ -62,7 +62,7 @@ class LLMParser:
         for k, o in enumerate(outs):
             self.decoded_tokens.append(len(self.llm.tok.encode(o)))
             obj = _extract_json(o)
-            if isinstance(obj, dict) and obj.get("intent") == "PERSONALISE" and me is not None:
+            if isinstance(obj, dict) and obj.get("intent") == "PERSONALIZE" and me is not None:
                 obj["scope"] = [me[k] if s == "me" else s for s in obj.get("scope", [])]
             res.append(from_json(obj, self.n_items) if obj is not None else None)
         return res

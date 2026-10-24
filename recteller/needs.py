@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import re
 
+from . import config as C
+
 SYSTEM = ("You write short shopping requests that a user gives to their personal AI agent. "
           "Write one or two sentences in the first person. Never mention product names, titles, "
           "brands or franchises. Do not invent details beyond the attributes given.")
@@ -18,7 +20,11 @@ def need_prompt(cat_name: str, a: dict) -> str:
     if "platform" in a:
         parts.append(f"platform = {a.get('platform')}")
     parts.append(f"price band = {a.get('price')}")
-    # Only coarse attributes are given so that the need does not single out one candidate.
+    if C.NEED_FEATURES:
+        for k, f in enumerate((a.get("features") or [])[:2]):
+            parts.append(f"feature {k + 1} = {f}")
+        return (f"Attributes of the product the user wants: {'; '.join(parts)}.\n"
+                "Write the user's request (keep it vague enough that several products could match).")
     return (f"Attributes of the product the user wants: {'; '.join(parts)}.\n"
             "Write the user's request in at most 25 words. Describe only the general kind of product and what it "
             "is for, in plain everyday words, so that many similar products in this category would match. Do not "

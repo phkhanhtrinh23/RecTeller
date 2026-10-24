@@ -28,19 +28,24 @@ CLOSED_MODEL = os.environ.get("RECTELLER_CLOSED", "gpt-4o-mini")
 
 DATASETS = ("games", "ind", "ml")
 
+# Task and simulator protocol (App. C.1, App. D "Projector training"). Defaults follow the paper.
+NEED_FEATURES = os.environ.get("RECTELLER_NEED_FEATURES", "1") == "1"   # need text uses two item features
+ML_NEG_DECADE = os.environ.get("RECTELLER_ML_NEG_DECADE", "0") == "1"   # ML-1M negatives also share the decade
+PROJ_ANCHOR = os.environ.get("RECTELLER_PROJ_ANCHOR", "need")           # proxy scores: similarity to the need or target
+
 
 @dataclass(frozen=True)
 class Protocol:
     # release (Sec. 4.2)
     K: int = 10                 # K, slots per response
-    kp: int = 3                 # k_p, personalised slots
+    kp: int = 3                 # k_p, personalized slots
     L: int = 4                  # L, weight levels
     clip: float = 5.0           # c, score clipping bound
     Delta: float = 1.0          # Delta, score sensitivity
     eps_sel: float = 3.0        # eps_sel, selection budget
     eps_w: float = 1.0          # eps_w, weight-level budget
     # per-account budgets per window (Sec. 4.1)
-    n_max: int = 8              # n_max, personalised responses per window
+    n_max: int = 8              # n_max, personalized responses per window
     B: int = 40                 # B, admitted requests per window
     P: int = 200                # P, parser calls per window
     window_hours: int = 24      # window length (hours)

@@ -1,7 +1,7 @@
 """Fig. budget (a): utility under the per-account cap. Test tasks are grouped at random into
 account-days of 12 tasks, served one after another to one fresh account within one window.
-The day mean at n averages the first n tasks. MCP tools and JSON top-K have no per-account
-bound, so their curves are flat at their per-task HR@1 (read from the utility runs).
+The day mean at n averages the first n tasks. MCP tools has no per-account bound, so its curve
+is flat at its per-task HR@1 (read from the utility runs). capo<n> is the cap-only k_p = 3 control.
 
     python scripts/run_budget.py --dataset games
 """
@@ -24,6 +24,8 @@ def main():
     ap.add_argument("--dataset", default="games")
     ap.add_argument("--n", type=int, default=C.TEST_USERS)
     ap.add_argument("--seeds", type=int, default=1)
+    ap.add_argument("--modes", nargs="+", default=["ours", "capo2", "capo4"],
+                    help="capo<n>: cap-only k_p = 3 control with n_max = n")
     args = ap.parse_args()
     ctx, d = setup.context(args.dataset)
     rng = np.random.default_rng(0)
@@ -32,7 +34,9 @@ def main():
     llm = LLM()
     proj = projector.load(C.CKPT / f"projector_{args.dataset}_Qwen3-8B.pt")
     res = {}
-    for mode, reader in (("ours", "soft"), ("capped", "jtopk")):
+    readers = {}
+    for mode in args.modes:
+        reader = readers.get(mode, "soft")
         corr = []
         for s in range(args.seeds):
             resps = serve_account_days(mode, tasks, ctx, C.SEQ_N, seed=s)
@@ -50,7 +54,7 @@ def main():
         c = np.array(corr, dtype=np.float32).mean(0).reshape(-1, C.SEQ_N)       # (days, position)
         res[mode] = {"by_position": c.mean(0).tolist(),
                      "day_mean": [float(c[:, :n].mean()) for n in range(1, C.SEQ_N + 1)],
-                     "personalised_by_position": np.array(pers).reshape(-1, C.SEQ_N).mean(0).tolist()}
+                     "personalized_by_position": np.array(pers).reshape(-1, C.SEQ_N).mean(0).tolist()}
         print(mode, res[mode], flush=True)
     out = C.RESULTS / "budget"
     out.mkdir(parents=True, exist_ok=True)

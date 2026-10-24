@@ -5,9 +5,9 @@ lines 7-11 C2 (atomic reservation, scoring, release, public fill), lines 12-13 C
 done by the reader in ``clients.py`` from the released tuple and public data only).
 
 The same class also serves the controls and baselines of Sec. 5 by configuration:
-``release_kind`` in {noisy, exact_kp, topK_json, random_replace, topK_list, all_scores},
+``release_kind`` in {noisy, exact_kp, topK_list, random_replace},
 ``keying`` in {account, session} and ``budgets`` on/off. Requests are processed in order
-for all counter and cache decisions, and scoring of the admitted personalised requests is
+for all counter and cache decisions, and scoring of the admitted personalized requests is
 batched (``serve_batch``) so long attacks run on the GPU.
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ import numpy as np
 
 from . import policy
 from .accounts import AccountStore
-from .intents import Compare, Details, Personalise, Search
+from .intents import Compare, Details, Personalize, Search
 from .release import Release, release
 from .tokens import Token, TokenAuthority
 
@@ -47,7 +47,7 @@ class Response:
     query: str = ""
     cached: bool = False
     platform_call: bool = False
-    personalised: bool = False
+    personalized: bool = False
     details: dict | None = None
 
 
@@ -134,7 +134,7 @@ class Gatekeeper:
             st = self.sessions[self._skey(tok, r.session)]
             epoch = self.store.epoch(r.now)
             owner = self._owner(tok, r.session)
-            ckey = (owner, it.key(), tuple(st.cands) if isinstance(it, Personalise) else (), epoch)
+            ckey = (owner, it.key(), tuple(st.cands) if isinstance(it, Personalize) else (), epoch)
             if self.cache_on and ckey in self.cache:
                 resp, qc = self.cache[ckey]
                 if isinstance(it, Search):
@@ -158,7 +158,7 @@ class Gatekeeper:
                                 platform_call=True, details=det)
                 self._finish(out, k, resp, ckey, st)
                 continue
-            # PERSONALISE
+            # PERSONALIZE
             if not st.cands:                          # no stored candidate set: empty, nothing reserved
                 out[k] = Response("OK", "no_candidates", it, [], [], 0, kind="empty")
                 continue
@@ -181,8 +181,8 @@ class Gatekeeper:
                 rel: Release = release(s, st.cands, st.cands, self.proto, self.rng, kind=self.kind, kp=self.kp,
                                        p_replace=self.p_replace, use_levels=self.use_levels)
                 resp = Response("OK", "", it, rel.items, rel.levels, rel.n_pers, rel.scores, rel.kind,
-                                self._attrs(st), st.q.text if st.q else "", platform_call=True, personalised=True)
-                self.stats["personalised"] += 1
+                                self._attrs(st), st.q.text if st.q else "", platform_call=True, personalized=True)
+                self.stats["personalized"] += 1
                 self._finish(out, k, resp, ckey, st)
         return out  # type: ignore[return-value]
 

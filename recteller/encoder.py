@@ -3,7 +3,7 @@
 z_k = [ e(o_k) || sum_v alpha_{k,v} e(v) || phi(level_k) ]
 
 e(i) = E(x_i) and e(v) = E(v) come from a fixed, published sentence encoder over public
-catalogue text only (H2). phi is a learned level table owned by the projector, so the
+catalog text only (H2). phi is a learned level table owned by the projector, so the
 transported array here holds the first two blocks plus the integer level.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ def embed(texts: list[str], bs: int = 256) -> np.ndarray:
 
 
 class PublicEmbeddings:
-    """e(i) for every catalogue item and e(v) for every attribute value, cached on disk."""
+    """e(i) for every catalog item and e(v) for every attribute value, cached on disk."""
 
     def __init__(self, cat):
         self.cat = cat

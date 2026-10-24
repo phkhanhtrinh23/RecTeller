@@ -9,14 +9,14 @@ import json
 import os
 from dataclasses import dataclass, field
 
-INTENTS = ("SEARCH", "COMPARE", "DETAILS", "PERSONALISE")
+INTENTS = ("SEARCH", "COMPARE", "DETAILS", "PERSONALIZE")
 
 
 @dataclass(frozen=True)
 class Token:
     account: str
     scopes: frozenset[str]                 # intent names this token may use
-    covers: frozenset[str] = frozenset()   # accounts whose histories PERSONALISE may read
+    covers: frozenset[str] = frozenset()   # accounts whose histories PERSONALIZE may read
     exp: float = float("inf")              # expiry (simulated hours)
     sig: str = ""
 

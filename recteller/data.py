@@ -4,7 +4,7 @@ Datasets (Sec. 5.1): Amazon Reviews 2023 5-core ``Video_Games`` (games) and
 ``Industrial_and_Scientific`` (ind), and MovieLens-1M (ml), all split leave-last-out.
 
 Every item gets public text ``x_i`` and public attribute values ``V_i`` (H1: nothing here
-reads interaction data except the popularity-free 5-core filter that defines the catalogue).
+reads interaction data except the popularity-free 5-core filter that defines the catalog).
 """
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ AMAZON = {"games": "Video_Games", "ind": "Industrial_and_Scientific"}
 
 
 @dataclass
-class Catalogue:
-    """Public catalogue. Item index 0 is padding, real items are 1..n."""
+class Catalog:
+    """Public catalog. Item index 0 is padding, real items are 1..n."""
     name: str
     ids: list[str]                      # raw id per index (index 0 = "<pad>")
     titles: list[str]
@@ -43,6 +43,9 @@ class Catalogue:
         a = "; ".join(f"{k}: {v}" for k, v in self.attrs[i].items())
         f = " ".join(self.features[i][:2])
         return f"{self.titles[i]}. {a}. {f}".strip()
+
+
+Catalogue = Catalog  # alias so datasets pickled under the former class name still load
 
 
 @dataclass
@@ -145,7 +148,7 @@ def _load_amazon(ds: str):
     idx = {a: i for i, a in enumerate(ids)}
     seqs = {u: [idx[a] for a in s] for u, s in seq_raw.items()}
     default = ("platform", "category", "price", "brand") if ds == "games" else ("category", "price", "brand")
-    cat_obj = Catalogue(ds, ids, titles, attrs, feats, leaf, default)
+    cat_obj = Catalog(ds, ids, titles, attrs, feats, leaf, default)
     return cat_obj, seqs
 
 
@@ -177,7 +180,7 @@ def _load_ml():
         leaf.append(g[0])
     idx = {s: k for k, s in enumerate(ids)}
     seqs = {int(u): [idx[str(i)] for i in grp.i.tolist()] for u, grp in r.groupby("u")}
-    return Catalogue("ml", ids, titles, attrs, feats, leaf, ("genres", "decade")), seqs
+    return Catalog("ml", ids, titles, attrs, feats, leaf, ("genres", "decade")), seqs
 
 
 # ----------------------------------------------------------------------------- splits/tasks
@@ -208,12 +211,20 @@ def _split(seqs: dict, ds: str, seed: int = 0) -> Split:
                  shadow[:half], shadow[half:], mia_members, session_users)
 
 
-def make_tasks(cat: Catalogue, split: Split, users: list, seed: int, hist: int = C.DEFAULT.hist) -> list[Task]:
+def _band(a: dict) -> str:
+    """Negative-sampling band: the price band (Amazon). ML-1M negatives share the first genre,
+    and optionally also the release decade (RECTELLER_ML_NEG_DECADE=1)."""
+    if "price" in a:
+        return a["price"]
+    return a.get("decade", "") if C.ML_NEG_DECADE else ""
+
+
+def make_tasks(cat: Catalog, split: Split, users: list, seed: int, hist: int = C.DEFAULT.hist) -> list[Task]:
     """LLaRA-style pick-one tasks: target + 19 negatives of its leaf category and price band."""
     rng = np.random.default_rng(seed)
     by_leaf_band, by_leaf, by_top = defaultdict(list), defaultdict(list), defaultdict(list)
     for i in range(1, cat.n + 1):
-        band = cat.attrs[i].get("price", cat.attrs[i].get("decade", ""))   # ML-1M: same decade
+        band = _band(cat.attrs[i])
         by_leaf_band[(cat.leaf[i], band)].append(i)
         by_leaf[cat.leaf[i]].append(i)
         by_top[cat.leaf[i].split(" > ")[0]].append(i)
@@ -222,7 +233,7 @@ def make_tasks(cat: Catalogue, split: Split, users: list, seed: int, hist: int =
         s = split.seqs[u]
         target, h = s[-1], s[:-1][-hist:]
         excl = set(s)
-        band = cat.attrs[target].get("price", cat.attrs[target].get("decade", ""))
+        band = _band(cat.attrs[target])
         negs: list[int] = []
         for pool in (by_leaf_band[(cat.leaf[target], band)], by_leaf[cat.leaf[target]],
                      by_top[cat.leaf[target].split(" > ")[0]], range(1, cat.n + 1)):
@@ -245,7 +256,7 @@ def make_tasks(cat: Catalogue, split: Split, users: list, seed: int, hist: int =
 
 @dataclass
 class Dataset:
-    cat: Catalogue
+    cat: Catalog
     split: Split
     test: list[Task]
     val: list[Task]
@@ -291,9 +302,9 @@ def stats(d: Dataset) -> dict:
             "test_tasks": len(d.test), "val_tasks": len(d.val)}
 
 
-def make_synth_tasks(cat: Catalogue, n: int, exclude: set[int], seed: int = 3) -> list[Task]:
+def make_synth_tasks(cat: Catalog, n: int, exclude: set[int], seed: int = 3) -> list[Task]:
     """Public synthetic tasks for projector training (App. D "Projector training"): a public
-    catalogue target (never a test/validation target), candidates as in ``make_tasks``."""
+    catalog target (never a test/validation target), candidates as in ``make_tasks``."""
     rng = np.random.default_rng(seed)
     pool = [i for i in range(1, cat.n + 1) if i not in exclude]
     targets = rng.choice(pool, size=n, replace=len(pool) < n)

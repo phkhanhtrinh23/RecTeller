@@ -19,6 +19,16 @@ SYSTEM = ("You are a personal AI agent shopping on behalf of one user. You must 
 HEADER = "id | title | attribute values | level"
 
 
+def _schema_block() -> str:
+    """Ablation A2 (no parser): the client itself writes typed intents, so it reads the schema."""
+    from .intents import SCHEMA
+    return ("You query the platform with typed intents. Send exactly one JSON object per request in one "
+            "of these forms (malformed requests are denied):\n" + json.dumps(SCHEMA))
+
+
+SCHEMA_BLOCK = _schema_block()
+
+
 def _title(cat, i, n=60):
     t = cat.titles[i]
     return t if len(t) <= n else t[: n - 1] + "…"
@@ -79,17 +89,10 @@ def sec_iagent(cat, task, resp, profile_items) -> str:
             f"most recent last): {prof}\nRerank the platform's recommendations with this profile before choosing.")
 
 
-def sec_openapi(cat, task, resp) -> str:
-    sc = {letter(task, i): round(s, 2) for i, s in zip(resp.items, resp.scores)}
-    top = resp.items[:10]
-    return (sec_mcp(cat, task, type("R", (), {"items": top})) +
-            f"\nTool call: get_recommender_scores(all candidates) -> {json.dumps(sc)}")
-
-
-def sec_jtopk(cat, task, resp) -> str:
-    extra = [{"score": s} for s in resp.scores] if resp.scores is not None else None   # public reply after the cap
-    recs = _records(cat, task, resp.items, extra, features=False)
-    return "Platform gatekeeper response (top-K, JSON):\n" + json.dumps(recs, ensure_ascii=False)
+def sec_ranked(cat, task, resp) -> str:
+    """An exact ranked list returned behind the per-account cap (random-replacement control)."""
+    recs = _records(cat, task, resp.items, None, features=False)
+    return "Platform gatekeeper response (ranked list, JSON):\n" + json.dumps(recs, ensure_ascii=False)
 
 
 def render_compact(cat, task, resp) -> str:
@@ -100,7 +103,7 @@ def render_compact(cat, task, resp) -> str:
 
 
 def sec_ours_text(cat, task, resp) -> str:
-    return ("Platform gatekeeper message (one line per slot, in the platform's order; level 1-4 = personalised "
+    return ("Platform gatekeeper message (one line per slot, in the platform's order; level 1-4 = personalized "
             "for your user, higher is stronger; level 0 = public result):\n" + render_compact(cat, task, resp))
 
 
@@ -108,11 +111,11 @@ def sec_ours_soft(cat, task, resp) -> str:
     """Reader (a): each slot as its identifier in text followed by one soft token."""
     slots = "\n".join(f"[{letter(task, i)}] {LLM.SOFT_MARK}" for i in resp.items)
     return ("Platform gatekeeper message (one slot per item, in the platform's order; each slot is the item's "
-            "letter followed by an embedding of the item, its attributes and its personalisation level):\n" + slots)
+            "letter followed by an embedding of the item, its attributes and its personalization level):\n" + slots)
 
 
 SECTIONS = {"block": sec_block, "web": sec_web, "mcp": sec_mcp, "firewall": sec_mcp, "gro": sec_mcp,
-            "openapi": sec_openapi, "jtopk": sec_jtopk, "capped": sec_jtopk, "stitch": sec_jtopk,
+            "ranked": sec_ranked,
             "ours_text": sec_ours_text, "ours_soft": sec_ours_soft}
 
 

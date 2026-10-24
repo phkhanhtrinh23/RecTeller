@@ -2,7 +2,7 @@
 
 The attacker registers fresh accounts (no stored history), grows ``n_queries`` synthetic
 sequences autoregressively to ``length`` items: at each step it issues a typed SEARCH ("more
-like this" on the last item, which stores C(q) in the session) and a PERSONALISE with the
+like this" on the last item, which stores C(q) in the session) and a PERSONALIZE with the
 current sequence as session context, then appends an item sampled from the returned list.
 Requests are spread evenly over ``days`` windows and over ``n_accounts`` accounts. The
 gatekeeper's counters decide what each request gets (refused beyond P, denied beyond B,
@@ -21,7 +21,7 @@ import torch.nn.functional as F
 
 from .. import sasrec
 from ..gatekeeper import Request
-from ..intents import Personalise, Search
+from ..intents import Personalize, Search
 from ..modes import build
 
 DEV = sasrec.DEV
@@ -32,7 +32,7 @@ class Pair:
     context: list[int]
     items: list[int]
     q: np.ndarray            # target weights over items (sum 1)
-    personalised: bool
+    personalized: bool
 
 
 READING = "levels"   # "levels": RecTeller levels as weights, "list": every response read as a ranked list
@@ -44,7 +44,7 @@ def targets(resp, kind: str) -> np.ndarray:
     if READING == "list" and resp.scores is None:
         w = 1.0 / np.log2(np.arange(n) + 2.0)
         return (w / w.sum()).astype(np.float32)
-    if resp.scores is not None:                       # Open API (exact) / JSON top-K (quantised)
+    if resp.scores is not None:                       # Open API (exact) / JSON top-K (quantized)
         s = np.asarray(resp.scores, dtype=np.float64)
         w = np.exp(s - s.max())
     elif resp.n_pers and resp.kind in ("noisy", "exact_kp"):
@@ -82,8 +82,8 @@ def collect(ctx, mode: str, n_accounts: int, days: int, seed: int, n_queries: in
             tok = toks[j % n_accounts]
             sess = f"q{j}"
             sreq.append(Request(tok, sess, now, intent=Search(text=cat.text(s[-1]))))
-            preq.append(Request(tok, sess, now, intent=Personalise((), tuple(s[-50:]))))
-        # each sequence's Search precedes its Personalise, interleaved to respect counter order
+            preq.append(Request(tok, sess, now, intent=Personalize((), tuple(s[-50:]))))
+        # each sequence's Search precedes its Personalize, interleaved to respect counter order
         reqs = [r for pair in zip(sreq, preq) for r in pair]
         out = gk.serve_batch(reqs)
         for j, s in enumerate(seqs):
@@ -91,11 +91,11 @@ def collect(ctx, mode: str, n_accounts: int, days: int, seed: int, n_queries: in
             if r.status != "OK" or not r.items:
                 s.append(int(rng.integers(1, cat.n + 1)))      # denied: no information
                 continue
-            pairs.append(Pair(list(s[-50:]), list(r.items), targets(r, r.kind), bool(r.n_pers and r.personalised)))
+            pairs.append(Pair(list(s[-50:]), list(r.items), targets(r, r.kind), bool(r.n_pers and r.personalized)))
             s.append(pick_next(r, rng))
     st = dict(gk.stats)
     st["pairs"] = len(pairs)
-    st["personalised_pairs"] = sum(p.personalised for p in pairs)
+    st["personalized_pairs"] = sum(p.personalized for p in pairs)
     return pairs, st
 
 
@@ -136,7 +136,7 @@ def train_surrogate(pairs: list[Pair], n_items: int, seed: int = 0, visits: int 
 
 
 def agreement(victim: sasrec.Scorer, surrogate: sasrec.SASRec, sessions: list[list[int]], k: int = 10) -> np.ndarray:
-    """Agr@k per held-out session: top-k overlap of surrogate and victim over the catalogue."""
+    """Agr@k per held-out session: top-k overlap of surrogate and victim over the catalog."""
     a = victim.topk_all(sessions, k)
     b = sasrec.Scorer(surrogate).topk_all(sessions, k)
     return np.array([len(set(x) & set(y)) / k for x, y in zip(a, b)])

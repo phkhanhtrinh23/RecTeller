@@ -1,12 +1,12 @@
 """Floods (App. C.3): one account sends ``n`` requests within one window over ``sessions``
 parallel sessions, and a share ``repeat`` repeats an earlier typed request. We count the platform
-calls (retrieval, catalogue or scorer) that the access mode forwards."""
+calls (retrieval, catalog or scorer) that the access mode forwards."""
 from __future__ import annotations
 
 import numpy as np
 
 from ..gatekeeper import Request
-from ..intents import Personalise, Search
+from ..intents import Personalize, Search
 from ..modes import build
 
 
@@ -25,7 +25,7 @@ def run(ctx, mode: str, n: int = 1000, sessions: int = 5, repeat: float = 0.05, 
         if j % 2 == 0:
             it = Search(text=ctx.cat.text(int(rng.integers(1, ctx.cat.n + 1))))
         else:
-            it = Personalise((), tuple(int(x) for x in rng.integers(1, ctx.cat.n + 1, size=5)))
+            it = Personalize((), tuple(int(x) for x in rng.integers(1, ctx.cat.n + 1, size=5)))
         issued.append((sess, it))
         reqs.append(Request(tok, sess, now, intent=it))
     for r in reqs:                       # sequential: each request sees the counters of the earlier ones

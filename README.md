@@ -1,20 +1,29 @@
 # RecTeller
 
-Official implementation of **RecTeller: Connecting Personal Agents and Recommender Systems through
-Secure Gatekeepers and Latent Communication** (under review).
+Official implementation of **RecTeller: Secure and Budgeted Recommendation Access for Personal Agents**.
 
 RecTeller lets a platform serve users' personal AI agents from its recommender while keeping load and
-leakage under its own control. A platform-side **gatekeeper** answers agents through three components.
+leakage under its own control.
+
+<p align="center">
+  <img src="assets/figure1_teaser.png" width="620" alt="Three ways a platform can serve personal agents">
+</p>
+
+A platform-side **gatekeeper** answers agents through three components.
 
 | Component | Paper | Code |
 |---|---|---|
 | **C1** Permission-bounded gatekeeper sessions: delegation tokens, per-account counters `p_u ≤ P`, `b_u ≤ B`, `n_u ≤ n_max` with atomic `Reserve`, a quarantined LLM parser that emits typed intents, and an access-control policy enforced in code | §4.1, Alg. 1 lines 1–6 | `tokens.py`, `accounts.py`, `intents.py`, `parser.py`, `policy.py`, `gatekeeper.py` |
 | **C2** Budgeted release: reserve-then-release, clipped scores, one-shot Gumbel top-k_p selection, Laplace weight levels `⌈L·softmax(ŵ)⌉`, public fill and a per-account cache | §4.2, Eqs. (select)(weights), Prop. 1–2 | `release.py`, `gatekeeper.py` |
-| **C3** Latent communication through slotted messages `z_k = [e(o_k) ‖ Σα e(v) ‖ φ(level)]` over public embeddings, read by open-weight agents as "`[id]` + one soft token" through a per-receiver projector `g_ψ`, or by any agent as compact text `id \| title \| attribute values \| level` | §4.3, Eqs. (slot)(proj) | `encoder.py`, `projector.py`, `clients.py` |
+| **C3** Compact transport through slotted messages `z_k = [e(o_k) ‖ Σα e(v) ‖ φ(level)]` over public embeddings, read by open-weight agents as "`[id]` + one soft token" through a per-receiver projector `g_ψ`, or by any agent as compact text `id \| title \| attribute values \| level` | §4.3, Eqs. (slot)(proj) | `encoder.py`, `projector.py`, `clients.py` |
 
 The repository also contains the full experimental pipeline: datasets and pick-one tasks, the SASRec
 recommender, all access modes and controls, GRO, and the attacks (model extraction, membership
 inference, floods, policy violations, repetition and long-horizon attacks).
+
+<p align="center">
+  <img src="assets/figure2_framework.png" width="100%" alt="RecTeller framework">
+</p>
 
 ## Repository structure
 
@@ -31,7 +40,7 @@ recteller/
   parser.py        quarantined LLM parser (and the LLM-enforced policy of ablation A1)
   policy.py        access-control policy pi(tau, iota) in code
   retrieval.py     public retrieval C(q) and public relevance r_i(q)
-  release.py       release modes: noisy | exact_kp | topK_json | random_replace | topK_list | all_scores
+  release.py       release modes: noisy | exact_kp | topK_list | random_replace
   gatekeeper.py    Algorithm 1, with batched scoring for long attacks
   encoder.py       public encoder E and slotted messages
   projector.py     per-receiver projector g_psi and its public training simulator
@@ -66,6 +75,9 @@ Environment variables:
 | `RECTELLER_ENCODER` | public text encoder (d = 768) | `sentence-transformers/all-mpnet-base-v2` |
 | `OPENAI_API_KEY` | closed client (GPT-4o-mini) | – |
 | `LLAMA` | second receiver for ablation A5 | `~/recteller_work/hf/Llama-3.1-8B-Instruct` |
+| `RECTELLER_NEED_FEATURES` | `1`: need texts use category, price band and two features (App. C.1). `0`: coarse attributes only | `1` |
+| `RECTELLER_ML_NEG_DECADE` | `1`: ML-1M negatives share the target's first genre and release decade. `0`: first genre only | `0` |
+| `RECTELLER_PROJ_ANCHOR` | projector simulator proxy scores: `need` (similarity to the need text, App. D) or `target` | `need` |
 
 ## Data
 
@@ -109,11 +121,11 @@ Individual runs:
 
 ```bash
 # utility and client tokens of access modes
-python scripts/run_utility.py --dataset games --modes mcp openapi jtopk ours ours_text einf --seeds 3
+python scripts/run_utility.py --dataset games --modes mcp iagent gro ours ours_text einf --seeds 3
 python scripts/run_utility.py --dataset games --client gpt --n 500 --modes mcp ours_text
 
 # model extraction with 50 colluding accounts over 7 days
-python scripts/run_security.py extraction --dataset games --modes ours capped openapi --accounts 50 --seeds 3
+python scripts/run_security.py extraction --dataset games --modes ours einf mcp gro --accounts 50 --seeds 5
 
 # privacy budget: "ours@<eps_resp>" (eps_sel : eps_w = 3 : 1)
 python scripts/run_utility.py --dataset games --modes ours@8 ours@16 --seeds 1
@@ -125,16 +137,19 @@ python scripts/run_utility.py --dataset games --modes ours@8 ours@16 --seeds 1
 |---|---|
 | `block`, `web` | no recommender access, rendered product pages |
 | `mcp`, `iagent`, `firewall` | MCP tools (top-10 + product information), user-side reranking, LLM converter + deterministic verifier |
-| `openapi` | MCP tools plus exact scores of all candidates |
-| `gro` | GRO-defended recommender behind the MCP interface |
-| `jtopk`, `capped`, `stitch` | gatekeeper with exact top-K JSON: per-session limits, per-account cap, per-account cap + GRO |
+| `gro` | GRO-defended recommender behind an unrestricted interface (exact ranked lists, no scores, no policy) |
 | `ours`, `ours_text` | RecTeller read as soft tokens or as compact text |
 | `einf`, `pub` | RecTeller at eps_resp = ∞, RecTeller with public slots only (k_p = 0) |
-| `nocap`, `neither`, `kp1`, `kp5`, `nolev`, `ours_shuf`, `ours_xproj`, `rr<p>` | ablations and random replacement |
+| `nocap`, `neither` | ablations − cap (per-session keying) and − noise − cap |
+| `kp1`, `kp5`, `nolev` | sensitivity: k_p = 1 or 5, no weight levels (ε_w = 0, the whole budget on selection) |
+| `ours_a2`, `ours_shuf`, `ours_text`, `ours_xproj`, `min` | ablations A2 (no parser, the client reads the intent schema), A3, A4, A5, and minimal (A2 + A4, no levels) |
+| `capo<n>` | cap-only k_p = 3 control: noise-free release with n_max = n (the paper uses n ∈ {2, 4}) |
+| `rr<p>` | random replacement: exact ranked list behind the account cap, each item replaced with probability p |
+| `ours@<eps>` | RecTeller with ε_resp = eps (ε_sel : ε_w = 3 : 1), swept over {0.5, 1, 2, 4, 8, ∞} |
 
 ### Default protocol
 
-K = 10 slots, k_p = 3 personalised slots, L = 4 levels, clip c = 5, Δ = 1, ε_sel = 3, ε_w = 1
+K = 10 slots, k_p = 3 personalized slots, L = 4 levels, clip c = 5, Δ = 1, ε_sel = 3, ε_w = 1
 (ε_resp = 4), and per account and 24-hour window n_max = 8, B = 40, P = 200. These are defined in
 `recteller/config.py` and can be overridden through `Protocol(...)`.
 
@@ -147,14 +162,3 @@ python -m pytest -q tests/
 The tests cover the running example of the paper, an empirical check of the selection's differential
 privacy, the account cap under 50 concurrent sessions, admission before the parser, the policy example,
 the per-account cache, the sliding 30-day cap and grammar fuzzing.
-
-## Citation
-
-```bibtex
-@inproceedings{recteller2027,
-  title     = {RecTeller: Connecting Personal Agents and Recommender Systems through Secure Gatekeepers and Latent Communication},
-  author    = {Anonymous},
-  booktitle = {Under review},
-  year      = {2027}
-}
-```

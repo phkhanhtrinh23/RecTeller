@@ -2,7 +2,7 @@
 misleading a student (surrogate) trained on its top-k lists.
 
 Per step, (1) a student SASRec is distilled on the defended model's top-k distribution, and
-(2) the defended model minimises next-item cross-entropy minus lambda times the student's
+(2) the defended model minimizes next-item cross-entropy minus lambda times the student's
 distillation loss on its own top-k outputs, which moves its lists away from what a list-trained
 student currently predicts. Top-k lists are relaxed with a temperature softmax restricted to the
 top-k. The defended model serves ranked lists without scores.

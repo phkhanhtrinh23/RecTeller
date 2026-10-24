@@ -97,7 +97,7 @@ class Scorer:
 
     @torch.no_grad()
     def topk_all(self, histories: list[list[int]], k: int = 10, bs: int = 2048) -> np.ndarray:
-        """Top-k item ids over the whole catalogue (for Agr@10)."""
+        """Top-k item ids over the whole catalog (for Agr@10)."""
         out = []
         for b in range(0, len(histories), bs):
             H = pad_seqs(histories[b:b + bs], self.maxlen).to(DEV)
@@ -122,7 +122,7 @@ def _batches(seqs, maxlen, bs, rng):
 
 @torch.no_grad()
 def evaluate(model: SASRec, pairs, k: int = 10, bs: int = 2048) -> dict:
-    """Full-catalogue NDCG@k / HR@k for (context, next item) pairs."""
+    """Full-catalog NDCG@k / HR@k for (context, next item) pairs."""
     model.eval()
     hits, ndcg = [], []
     for b in range(0, len(pairs), bs):

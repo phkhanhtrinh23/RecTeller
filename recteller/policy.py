@@ -1,13 +1,13 @@
 """Access-control policy pi(tau, iota) in {ALLOW, NARROW, DENY}, pure code (Sec. 4.1).
 
 Intents within the token's scopes are allowed, excess scope is narrowed, the rest denied.
-Example 2 of the paper is a unit test (tests/test_policy.py).
+Example 2 of the paper is a unit test (tests/test_gatekeeper.py).
 """
 from __future__ import annotations
 
 from dataclasses import replace
 
-from .intents import Compare, Details, Personalise, Search
+from .intents import Compare, Details, Personalize, Search
 from .tokens import Token
 
 ALLOW, NARROW, DENY = "ALLOW", "NARROW", "DENY"
@@ -33,7 +33,7 @@ def evaluate(tok: Token, it, public_attrs: set[str], K: int, has_history=lambda 
         if it.attributes and not attrs:
             return DENY, None                        # only non-public fields requested
         return (ALLOW if attrs == it.attributes else NARROW), replace(it, attributes=attrs)
-    if isinstance(it, Personalise):
+    if isinstance(it, Personalize):
         # uncovered names are dropped identically whether or not they exist
         scope = tuple(s for s in it.scope if s in tok.covers)
         hist_ok = any(has_history(s) for s in scope)

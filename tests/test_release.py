@@ -29,17 +29,26 @@ def test_modes_never_aliased():
     cands = list(range(1, 21))
     a = release(s, cands, cands, proto.with_eps(float("inf")), rng, kind="noisy")
     b = release(s, cands, cands, proto, rng, kind="exact_kp")
-    c = release(s, cands, cands, proto, rng, kind="topK_json")
+    c = release(s, cands, cands, proto, rng, kind="topK_list")
     assert a.items == b.items and a.n_pers == 3          # eps = inf maps to exact_kp
-    assert b.items != c.items and c.n_pers == 10         # never to the top-K control
-    assert c.scores is not None and b.scores is None
+    assert b.items != c.items and c.n_pers == 10         # never to the exact top-K list
+    assert c.scores is None and b.scores is None
 
 
 def test_clipping():
+    from recteller.release import clip
+    assert list(clip(np.array([100.0, -100.0, 0.0]), Protocol().clip)) == [5.0, -5.0, 0.0]
+
+
+def test_random_replacement_is_per_item():
+    """Random replacement replaces each item of the exact list independently with probability p."""
     proto = Protocol()
-    s = np.array([100.0, -100.0, 0.0])
-    c = release(s, [1, 2, 3], [1, 2, 3], proto, None, kind="topK_json")
-    assert max(c.scores) == 5.0 and min(c.scores) == -5.0
+    rng = np.random.default_rng(0)
+    s = np.linspace(3, -3, 20)
+    cands = list(range(1, 21))
+    n = [sum(i not in cands[:10] for i in release(s, cands, cands, proto, rng, kind="random_replace",
+                                                   p_replace=0.3).items) for _ in range(2000)]
+    assert abs(np.mean(n) - 3.0) < 0.15 and np.var(n) > 1.0   # Binomial(10, 0.3), not a fixed share
 
 
 def test_empirical_dp_selection():
@@ -59,3 +68,14 @@ def test_empirical_dp_selection():
         p1, p2 = c1[o] / n, c2[o] / n
         if min(p1, p2) > 2e-3:                     # ignore MC-noisy rare tuples
             assert abs(np.log(p1 / p2)) <= proto.eps_sel + 0.15
+
+
+def test_no_levels_spends_budget_on_selection():
+    """eps_w = 0 omits the levels: no score magnitude is released, every selected slot has one level."""
+    from dataclasses import replace
+    proto = replace(Protocol(), eps_sel=4.0, eps_w=0.0)
+    rng = np.random.default_rng(0)
+    s = np.array([5.0, -5.0, 4.0, -4.0, 0.0, 3.0])
+    for _ in range(50):
+        r = release(s, list(range(1, 7)), list(range(1, 7)), proto, rng, kind="noisy")
+        assert r.levels[: r.n_pers] == [1] * r.n_pers and set(r.levels[r.n_pers:]) <= {0}

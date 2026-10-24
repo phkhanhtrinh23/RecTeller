@@ -20,11 +20,7 @@ SPECS = {
     "mcp": ("mcp", "mcp", {}),
     "firewall": ("firewall", "firewall", {}),
     "iagent": ("iagent", "iagent", {}),
-    "openapi": ("openapi", "openapi", {}),
     "gro": ("gro", "mcp", {}),
-    "jtopk": ("jtopk", "jtopk", {}),
-    "capped": ("capped", "jtopk", {}),
-    "stitch": ("stitch", "jtopk", {}),
     "ours": ("ours", "soft", {}),
     "ours_text": ("ours", "text", {}),
     "einf": ("einf", "soft", {}),
@@ -35,15 +31,18 @@ SPECS = {
     "kp5": ("kp5", "soft", {}),
     "ours_shuf": ("ours", "soft", {"shuffle": True}),        # A3
     "ours_xproj": ("ours", "soft", {"proj": "other"}),       # A5
+    "ours_a2": ("ours", "soft", {"schema": True}),           # A2: no parser, the client reads the intent schema
+    "min": ("nolev", "text", {"schema": True}),              # minimal: A2 + A4, no levels
+    "capo2": ("capo2", "soft", {}),                          # cap-only k_p = 3 control, n_max = 2
+    "capo4": ("capo4", "soft", {}),                          # cap-only k_p = 3 control, n_max = 4
 }
 for e in (0.5, 1.0, 2.0, 8.0, 16.0):
     SPECS[f"ours@{e:g}"] = ("ours", "soft", {"eps": e})
     SPECS[f"ours_text@{e:g}"] = ("ours", "text", {"eps": e})
 for p in (0.1, 0.3, 0.5):
-    SPECS[f"rr{p:g}"] = (f"rr{p:g}", "jtopk", {})
+    SPECS[f"rr{p:g}"] = (f"rr{p:g}", "ranked", {})
 
-DETERMINISTIC = {"block", "web", "mcp", "firewall", "iagent", "openapi", "gro", "jtopk", "capped", "stitch",
-                 "einf", "einf_text", "pub"} | {f"rr{p:g}" for p in (0.1, 0.3, 0.5)}
+DETERMINISTIC = {"block", "web", "mcp", "firewall", "iagent", "gro", "einf", "einf_text", "pub", "capo2", "capo4"} | {f"rr{p:g}" for p in (0.1, 0.3, 0.5)}
 
 
 def section(reader: str, cat, task, resp) -> str:
@@ -69,7 +68,10 @@ def build_prompts(name, tasks, ctx, seed=0, projector=None, llm: LLM | None = No
     users, softs = [], []
     rng = np.random.default_rng(seed + 99)
     for t, r in zip(tasks, resps):
-        users.append(clients.user_text(ctx.cat, t, section(reader, ctx.cat, t, r)))
+        sec = section(reader, ctx.cat, t, r)
+        if opt.get("schema"):
+            sec = clients.SCHEMA_BLOCK + "\n\n" + sec
+        users.append(clients.user_text(ctx.cat, t, sec))
         if reader == "soft":
             sl = make_slots(ctx.pe, r.items, r.levels, attrs=r.attrs,
                             shuffle_attrs_rng=rng if opt.get("shuffle") else None)
