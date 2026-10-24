@@ -17,13 +17,13 @@ A platform-side **gatekeeper** answers agents through three components.
 | **C2** Budgeted release: reserve-then-release, clipped scores, one-shot Gumbel top-k_p selection, Laplace weight levels `⌈L·softmax(ŵ)⌉`, public fill and a per-account cache | §4.2, Eqs. (select)(weights), Prop. 1–2 | `release.py`, `gatekeeper.py` |
 | **C3** Compact transport through slotted messages `z_k = [e(o_k) ‖ Σα e(v) ‖ φ(level)]` over public embeddings, read by open-weight agents as "`[id]` + one soft token" through a per-receiver projector `g_ψ`, or by any agent as compact text `id \| title \| attribute values \| level` | §4.3, Eqs. (slot)(proj) | `encoder.py`, `projector.py`, `clients.py` |
 
-The repository also contains the full experimental pipeline: datasets and pick-one tasks, the SASRec
-recommender, all access modes and controls, GRO, and the attacks (model extraction, membership
-inference, floods, policy violations, repetition and long-horizon attacks).
-
 <p align="center">
   <img src="assets/figure2_framework.png" width="100%" alt="RecTeller framework">
 </p>
+
+The repository also contains the full experimental pipeline: datasets and pick-one tasks, the SASRec
+recommender, all access modes and controls, GRO, and the attacks (model extraction, membership
+inference, floods, policy violations, repetition and long-horizon attacks).
 
 ## Repository structure
 
